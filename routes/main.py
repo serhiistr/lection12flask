@@ -1,7 +1,8 @@
 from app import app, db
 from flask import render_template, request, session, redirect
 from models.models import Plant, User
-
+from sqlalchemy import or_
+import hashlib
 
 @app.route("/")
 def main():
@@ -20,7 +21,7 @@ def sign_up():
         user = User(
             username=data.get("username"),
             email=data.get("email"),
-            password=data.get("password"),
+            password=hashlib.md5(data.get("password").encode()).hexdigest(),
             first_name=data.get("first_name"),
             last_name=data.get("last_name")
         )
@@ -41,17 +42,10 @@ def logout():
 @app.route("/sign-in", methods=["POST", "GET"])
 def sign_in():
     if request.method == "POST":
-        data = request.form
-        user = User(
-            username=data.get("username"),
-            email=data.get("email"),
-            password=data.get("password"),
-            first_name=data.get("first_name"),
-            last_name=data.get("last_name")
-        )
-        db.session.add(user)
-        db.session.commit()
-        session["user"] =user.id
+        user = User.query.filter(or_(User.email == request.form.get("email"), User.username == request.form.get("email"))).first()
+        if user is not None:
+            if user.password == hashlib.md5(request.form.get("password").encode()).hexdigest():
+                session["user"] = user.id
         return redirect("/")
     else:
         return render_template("sign-in.html")
